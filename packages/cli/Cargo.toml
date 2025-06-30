@@ -1,0 +1,8 @@
+[package]
+name = "sc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
+articles = { path = "../../lib/articles" }
