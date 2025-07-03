@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.40", features = ["derive"] }
 articles = { path = "../../lib/articles" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = "0.1.41"
