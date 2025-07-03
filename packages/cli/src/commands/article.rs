@@ -1,5 +1,8 @@
 use articles::Article;
 use clap::{Command, arg};
+use std::path::PathBuf;
+
+const DEFAULT_ARTICLE_OUTPUT_DIR: &str = "_posts/";
 
 /// Create the command to interact with articles
 pub(crate) fn cli() -> Command {
@@ -8,7 +11,8 @@ pub(crate) fn cli() -> Command {
         .subcommand(
             Command::new("create")
                 .about("Creates a new article file with the given data")
-                .arg(arg!(title: -t --title <TITLE>)),
+                .arg(arg!(output: -o --output <OUTPUT> "optional output of the file"))
+                .arg(arg!(-t --title <TITLE> "title of the article")),
         )
 }
 
@@ -16,14 +20,23 @@ pub(crate) fn cli() -> Command {
 pub(crate) fn run(matches: &clap::ArgMatches) {
     match matches.subcommand() {
         Some(("create", sub_matches)) => {
-            let title = sub_matches
-                .get_one::<String>("title")
-                .map(|s| s.to_string());
+            // Get the title
+            let title = sub_matches.get_one::<String>("title").cloned();
 
-            let _article = Article::builder()
+            // Get the output, or fallback to the default
+            let output = sub_matches
+                .get_one::<String>("output")
+                .map(|o| PathBuf::from(o))
+                .unwrap_or(PathBuf::from(DEFAULT_ARTICLE_OUTPUT_DIR));
+
+            // Make sure the output directory exists
+            std::fs::create_dir_all(output.clone()).expect("Could not create output directory");
+
+            // Build the article and save it
+            Article::builder()
                 .maybe_title(title)
                 .build()
-                .save_json()
+                .save(output)
                 .expect("Could not save article");
         }
         _ => unreachable!(),

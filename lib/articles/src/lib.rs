@@ -1,21 +1,20 @@
 pub mod builder;
 pub mod errors;
-
 pub use builder::ArticleBuilder;
 use chrono::{DateTime, NaiveDateTime, TimeZone};
 use chrono_tz::{Tz, US::Pacific};
 use errors::ArticleError;
 pub use serde::Serialize;
+use std::path::PathBuf;
 
 #[derive(Serialize)]
 struct Frontmatter<'a> {
     title: &'a str,
     author: Option<&'a str>,
     date: &'a str,
-    tags: Option<&'a [String]>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Article {
     title: String,
     author: String,
@@ -31,7 +30,6 @@ impl TryFrom<Article> for String {
             title: &value.title,
             author: Some(&value.author),
             date: &value.date.to_rfc3339(),
-            tags: None,
         };
 
         let frontmatter_yaml = serde_yaml::to_string(&frontmatter).map_err(|e| {
@@ -39,7 +37,7 @@ impl TryFrom<Article> for String {
             ArticleError::FrontMatterParse
         })?;
 
-        Ok(format!("---\n{}\n---\n{}", frontmatter_yaml, value.content))
+        Ok(format!("---\n{}---\n{}", frontmatter_yaml, value.content))
     }
 }
 
@@ -87,11 +85,48 @@ impl Article {
         ArticleBuilder::default()
     }
 
-    /// Saves the article to a json file
-    pub fn save_json(&self) -> Result<(), std::io::Error> {
-        println!("Saving article to {}.json", self.title);
-        let json = serde_json::to_string_pretty(self)?;
-        std::fs::write(format!("{}.json", self.title), json)?;
+    /// Saves the article to a file
+    pub fn save(self, output_dir: PathBuf) -> Result<(), ArticleError> {
+        // Make sure the output directory is a directory and exists
+        if !output_dir.exists() || !output_dir.is_dir() {
+            tracing::error!(
+                "Output directory does not exist or is not a directory: {}",
+                output_dir.display()
+            );
+            return Err(ArticleError::SaveFile);
+        }
+
+        // Transform the article date and title into a file name
+        // {YYYY-MM-dd}-{title}.md
+        let file_name = format!(
+            "{}-{}.md",
+            self.date.date_naive().to_string(),
+            self.serialize_title()
+        );
+
+        // Construct the output path and validate it doesn't already exist
+        let output_path = output_dir.join(file_name.clone());
+        if output_path.exists() {
+            tracing::error!("Output file already exists: {}", output_path.display());
+            return Err(ArticleError::SaveFile);
+        }
+
+        tracing::debug!(
+            "Saving article to {} in {}",
+            file_name,
+            output_dir.display()
+        );
+
+        let content = String::try_from(self).map_err(|e| {
+            tracing::error!("Failed to parse article to string: {}", e);
+            ArticleError::SaveFile
+        })?;
+
+        std::fs::write(output_path, content).map_err(|e| {
+            tracing::error!("Failed to write article to file: {}", e);
+            ArticleError::SaveFile
+        })?;
+
         Ok(())
     }
 
@@ -127,5 +162,10 @@ impl Article {
             })?;
 
         Ok(pt)
+    }
+
+    /// Utility function for serializing the title into safe filename
+    pub fn serialize_title(&self) -> String {
+        self.title.to_lowercase().replace(' ', "-").replace(',', "")
     }
 }
