@@ -7,5 +7,7 @@ pub(crate) fn cli() -> Command {
 
 /// Runs the serve subcommand
 pub(crate) async fn run() {
-    web::serve().await
+    if let Err(e) = web::serve().await {
+        tracing::error!("Error running serve command: {e}");
+    }
 }

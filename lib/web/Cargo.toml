@@ -7,3 +7,5 @@ edition = "2024"
 axum = "0.8.4"
 tokio = { version = "1.46.0", features = ["full"] }
 tracing = "0.1.41"
+articles = { path = "../articles" }
+thiserror = "2.0.12"

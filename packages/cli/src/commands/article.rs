@@ -36,7 +36,7 @@ pub(crate) fn run(matches: &clap::ArgMatches) {
             Article::builder()
                 .maybe_title(title)
                 .build()
-                .save(output)
+                .save(&output)
                 .expect("Could not save article");
         }
         _ => unreachable!(),
