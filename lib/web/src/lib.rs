@@ -27,6 +27,7 @@ pub async fn serve() -> Result<(), WebError> {
     // build the router
     let router = Router::new()
         .route("/", get(root))
+        .route("/blog", get(serve_blog_index))
         .route("/blog/{year}/{month}/{day}/{*path}", get(serve_blog_post));
 
     // run the router
@@ -78,6 +79,64 @@ fn build_articles(dir: PathBuf) -> Result<(), WebError> {
     }
 
     Ok(())
+}
+
+/// List all articles in the blog
+async fn serve_blog_index() -> impl IntoResponse {
+    let blog_dir = PathBuf::from(DEFAULT_BUILD_DIR).join(DEFAULT_POSTS_DIR);
+
+    // Check if the blog directory exists
+    if !blog_dir.exists() || !blog_dir.is_dir() {
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body("Blog directory not found".to_string())
+            .unwrap();
+    }
+
+    // Read all HTML files in the blog directory
+    match std::fs::read_dir(&blog_dir) {
+        Ok(entries) => {
+            let mut html_content = String::from(
+                "<html><head><title>Blog Index</title></head><body><h1>Blog Posts</h1><ul>",
+            );
+
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().map_or(false, |ext| ext == "html") {
+                        if let Some(file_name) = path.file_stem().and_then(|s| s.to_str()) {
+                            // Parse the filename to extract date and post name
+                            let parts: Vec<&str> = file_name.splitn(4, '-').collect();
+                            if parts.len() >= 4 {
+                                let year = parts[0];
+                                let month = parts[1];
+                                let day = parts[2];
+                                let post_name = parts[3];
+
+                                let url = format!("/blog/{}/{}/{}/{}", year, month, day, post_name);
+                                html_content.push_str(&format!(
+                                    "<li><a href=\"{}\">{}</a></li>",
+                                    url, file_name
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+
+            html_content.push_str("</ul></body></html>");
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+                .body(html_content)
+                .unwrap()
+        }
+        Err(_) => Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body("Error reading blog directory".to_string())
+            .unwrap(),
+    }
 }
 
 /// Serve blog posts from build/blog/ directory
