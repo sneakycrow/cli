@@ -1,4 +1,5 @@
 pub(crate) mod article;
+pub(crate) mod serve;
 
 use clap::Command;
 
@@ -8,11 +9,12 @@ pub(crate) struct Cli {
 
 impl Cli {
     /// Parses and runs the CLI with default parameters
-    pub(crate) fn parse() {
+    pub(crate) async fn parse() {
         let cli = Self::default();
         let matches = cli.build().get_matches();
         match matches.subcommand() {
             Some(("article", sub_matches)) => article::run(sub_matches),
+            Some(("serve", _)) => serve::run().await,
             _ => unreachable!(),
         }
     }
@@ -38,7 +40,7 @@ impl Cli {
 impl Default for Cli {
     fn default() -> Self {
         Self {
-            subcommands: vec![article::cli()],
+            subcommands: vec![article::cli(), serve::cli()],
         }
     }
 }

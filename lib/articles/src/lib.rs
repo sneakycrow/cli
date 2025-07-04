@@ -4,8 +4,13 @@ pub use builder::ArticleBuilder;
 use chrono::{DateTime, NaiveDateTime, TimeZone};
 use chrono_tz::{Tz, US::Pacific};
 use errors::ArticleError;
+use markdown_ppp::{
+    ast::Document,
+    html_printer::{self, render_html},
+    parser::{MarkdownParserState, parse_markdown},
+};
 pub use serde::Serialize;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 #[derive(Serialize)]
 struct Frontmatter<'a> {
@@ -85,15 +90,49 @@ impl Article {
         ArticleBuilder::default()
     }
 
+    /// Render the content of the article to HTML
+    pub fn render_html(&self) -> Result<String, ArticleError> {
+        self.render_ast()
+            .map(|doc| render_html(&doc, html_printer::config::Config::default()))
+    }
+
+    /// Loads a list of articles from a directory
+    pub fn from_dir(dir: PathBuf) -> Result<Vec<Article>, ArticleError> {
+        let mut articles = Vec::new();
+        let dir_entries = fs::read_dir(dir)?;
+        for entry in dir_entries {
+            let entry = entry.map_err(ArticleError::IO)?;
+            let path = entry.path();
+
+            if path.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("md") {
+                let file_content = fs::read_to_string(&path)?;
+                let article = Article::try_from(file_content)?;
+
+                articles.push(article);
+            }
+        }
+
+        Ok(articles)
+    }
+
+    /// Renders the content of the article into an AST
+    pub fn render_ast(&self) -> Result<Document, ArticleError> {
+        let state = MarkdownParserState::default();
+
+        parse_markdown(state, &self.content).map_err(|e| {
+            tracing::error!("Failed to parse markdown: {e}");
+            ArticleError::ContentParse
+        })
+    }
+
     /// Saves the article to a file
     pub fn save(self, output_dir: PathBuf) -> Result<(), ArticleError> {
         // Make sure the output directory is a directory and exists
         if !output_dir.exists() || !output_dir.is_dir() {
-            tracing::error!(
-                "Output directory does not exist or is not a directory: {}",
-                output_dir.display()
-            );
-            return Err(ArticleError::SaveFile);
+            return Err(ArticleError::IO(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Directory specified is invalid: {}", output_dir.display()),
+            )));
         }
 
         // Transform the article date and title into a file name
@@ -107,26 +146,19 @@ impl Article {
         // Construct the output path and validate it doesn't already exist
         let output_path = output_dir.join(file_name.clone());
         if output_path.exists() {
-            tracing::error!("Output file already exists: {}", output_path.display());
-            return Err(ArticleError::SaveFile);
+            return Err(ArticleError::IO(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                "Output file already exists",
+            )));
         }
 
-        tracing::debug!(
-            "Saving article to {} in {}",
-            file_name,
-            output_dir.display()
-        );
+        // Parse the article into a string for the file
+        let content = String::try_from(self)?;
 
-        let content = String::try_from(self).map_err(|e| {
-            tracing::error!("Failed to parse article to string: {}", e);
-            ArticleError::SaveFile
-        })?;
+        // Write the file
+        std::fs::write(&output_path, content)?;
 
-        std::fs::write(output_path, content).map_err(|e| {
-            tracing::error!("Failed to write article to file: {}", e);
-            ArticleError::SaveFile
-        })?;
-
+        tracing::debug!("Article written to {}", output_path.display());
         Ok(())
     }
 

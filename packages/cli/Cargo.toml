@@ -8,3 +8,5 @@ clap = { version = "4.5.40", features = ["derive"] }
 articles = { path = "../../lib/articles" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = "0.1.41"
+web = { path = "../../lib/web" }
+tokio = { version = "1.46.0", features = ["full"] }

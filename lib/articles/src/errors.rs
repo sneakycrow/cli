@@ -4,6 +4,8 @@ use thiserror::Error;
 pub enum ArticleError {
     #[error("Could not parse frontmatter")]
     FrontMatterParse,
-    #[error("Could not save article to file")]
-    SaveFile,
+    #[error("Could not parse content")]
+    ContentParse,
+    #[error("I/O error: {0}")]
+    IO(#[from] std::io::Error),
 }

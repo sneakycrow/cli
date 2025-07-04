@@ -3,7 +3,8 @@ pub(crate) mod commands;
 pub(crate) use commands::Cli;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Start the tracer
     tracing_subscriber::registry()
         .with(
@@ -12,5 +13,5 @@ fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    Cli::parse();
+    Cli::parse().await;
 }
