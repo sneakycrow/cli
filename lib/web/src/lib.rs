@@ -27,7 +27,7 @@ pub async fn serve() -> Result<(), WebError> {
     // build the router
     let router = Router::new()
         .route("/", get(root))
-        .route("/blog/{*path}", get(serve_blog_post));
+        .route("/blog/{year}/{month}/{day}/{*path}", get(serve_blog_post));
 
     // run the router
     let port = 3000;
@@ -81,14 +81,17 @@ fn build_articles(dir: PathBuf) -> Result<(), WebError> {
 }
 
 /// Serve blog posts from build/blog/ directory
-async fn serve_blog_post(Path(path): Path<String>) -> impl IntoResponse {
+async fn serve_blog_post(
+    Path((year, month, day, path)): Path<(u32, u32, u32, String)>,
+) -> impl IntoResponse {
     // Remove leading slash if present
     let path = path.strip_prefix('/').unwrap_or(&path);
 
-    // Construct the file path
+    // Construct the file path with date-prefix structure
+    let file_name = format!("{:04}-{:02}-{:02}-{}.html", year, month, day, path);
     let file_path = PathBuf::from(DEFAULT_BUILD_DIR)
         .join(DEFAULT_POSTS_DIR)
-        .join(format!("{}.html", path));
+        .join(file_name);
 
     // Try to read the file
     match std::fs::read_to_string(&file_path) {

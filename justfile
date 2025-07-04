@@ -16,4 +16,4 @@ run *FLAGS:
     cargo run -- {{ FLAGS }}
 
 install:
-    cargo install --path .
+    cargo install --path packages/cli

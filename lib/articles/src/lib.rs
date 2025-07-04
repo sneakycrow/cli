@@ -12,6 +12,8 @@ use markdown_ppp::{
 pub use serde::Serialize;
 use std::{fs, path::PathBuf};
 
+const DEFAULT_AUTHOR: &str = "sneakycrow";
+
 #[derive(Serialize)]
 struct Frontmatter<'a> {
     title: &'a str,
@@ -68,7 +70,7 @@ impl TryFrom<String> for Article {
 
         // Extract the metadata
         let title = Self::extract_field("title", &frontmatter)?;
-        let author = Self::extract_field("author", &frontmatter)?;
+        let author = Self::extract_field("author", &frontmatter).unwrap_or(DEFAULT_AUTHOR);
         let date = Self::extract_date(&frontmatter)?;
 
         // Create the article
@@ -135,7 +137,8 @@ impl Article {
         }
 
         // Construct the output path and validate it doesn't already exist
-        let output_path = output_dir.join(self.filename());
+        let file_name = format!("{}.md", self.filename());
+        let output_path = output_dir.join(file_name);
         if output_path.exists() {
             return Err(ArticleError::IO(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -198,7 +201,7 @@ impl Article {
     /// Utility for serializing the file name {date}-{title}
     pub fn filename(&self) -> String {
         format!(
-            "{}-{}.md",
+            "{}-{}",
             self.date.date_naive().to_string(),
             self.serialize_title()
         )
