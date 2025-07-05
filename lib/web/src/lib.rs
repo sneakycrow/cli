@@ -2,33 +2,56 @@
 // TODO: Serve articles from /blog
 pub mod errors;
 
-use articles::Article;
+use articles::{Article, Serialize};
 use axum::{
     Router,
-    extract::Path,
-    http::{Response, StatusCode, header},
+    extract::{FromRef, Path, State},
     response::IntoResponse,
     routing::get,
 };
+use axum_template::{Key, RenderHtml, engine::Engine};
 use errors::WebError;
-use std::{io::ErrorKind, path::PathBuf};
+use handlebars::Handlebars;
+use serde_json::{Value, json};
+use std::path::PathBuf;
+use tower_http::services::ServeDir;
 
 // TODO: Replace with config loading
 const ARTICLES_DIRECTORY: &str = "_posts/";
-const DEFAULT_BUILD_DIR: &str = "build/";
-const DEFAULT_POSTS_DIR: &str = "blog/";
+
+type AppEngine = Engine<Handlebars<'static>>;
+
+#[derive(Clone, FromRef)]
+struct AppState {
+    engine: AppEngine,
+    articles: Vec<Article>,
+}
 
 /// Serve the website
 pub async fn serve() -> Result<(), WebError> {
-    // pre-render the articles
-    let articles_path = PathBuf::from(ARTICLES_DIRECTORY);
-    build_articles(articles_path)?;
+    // load the articles
+    let articles = Article::from_dir(PathBuf::from(ARTICLES_DIRECTORY)).unwrap();
+
+    // initialize template engine
+    let mut hbs = Handlebars::new();
+    let _ = hbs.register_template_file("base", "./templates/partials/base.hbs");
+    let _ = hbs.register_template_file("/", "./templates/index.hbs");
+    let _ = hbs.register_template_file("/blog", "./templates/blog.hbs");
+    let _ = hbs.register_template_file("post", "./templates/post.hbs");
+
+    // construct app state
+    let app_state = AppState {
+        engine: Engine::from(hbs),
+        articles,
+    };
 
     // build the router
     let router = Router::new()
+        .nest_service("/assets", ServeDir::new("assets"))
         .route("/", get(root))
         .route("/blog", get(serve_blog_index))
-        .route("/blog/{year}/{month}/{day}/{*path}", get(serve_blog_post));
+        .route("/blog/{year}/{month}/{day}/{*path}", get(serve_blog_post))
+        .with_state(app_state);
 
     // run the router
     let port = 3000;
@@ -45,129 +68,85 @@ pub async fn serve() -> Result<(), WebError> {
     Ok(())
 }
 
-/// Root index page
-async fn root() -> &'static str {
-    "Hello from Sneaky Crow"
+#[derive(Serialize)]
+struct RootTemplate {
+    parent: String,
 }
 
-/// Function for loading articles from a directory and saving them as html
-fn build_articles(dir: PathBuf) -> Result<(), WebError> {
-    // Make sure the target directory exists
-    if !dir.exists() || !dir.is_dir() {
-        return Err(WebError::IO(std::io::Error::new(
-            ErrorKind::NotFound,
-            "Directory not found",
-        )));
+impl Default for RootTemplate {
+    fn default() -> Self {
+        Self {
+            parent: "base".to_string(),
+        }
     }
+}
 
-    let post_output = PathBuf::from(DEFAULT_BUILD_DIR).join(DEFAULT_POSTS_DIR);
-    // Create the output directory if it doesn't exist
-    if !post_output.exists() {
-        std::fs::create_dir_all(&post_output)?;
-    }
-
-    // Load articles from the directory
-    let articles = Article::from_dir(dir)?;
-
-    // Render each article to the post output as html
-    for article in articles {
-        let file_name = format!("{}.html", article.filename());
-        let content = article.render_html()?;
-
-        let path = post_output.join(file_name);
-        std::fs::write(path, &content)?;
-    }
-
-    Ok(())
+/// Root index page
+async fn root(State(state): State<AppState>, Key(key): Key) -> impl IntoResponse {
+    RenderHtml(key, state.engine, RootTemplate::default())
 }
 
 /// List all articles in the blog
-async fn serve_blog_index() -> impl IntoResponse {
-    let blog_dir = PathBuf::from(DEFAULT_BUILD_DIR).join(DEFAULT_POSTS_DIR);
-
-    // Check if the blog directory exists
-    if !blog_dir.exists() || !blog_dir.is_dir() {
-        return Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body("Blog directory not found".to_string())
-            .unwrap();
-    }
-
-    // Read all HTML files in the blog directory
-    match std::fs::read_dir(&blog_dir) {
-        Ok(entries) => {
-            let mut html_content = String::from(
-                "<html><head><title>Blog Index</title></head><body><h1>Blog Posts</h1><ul>",
+async fn serve_blog_index(State(state): State<AppState>, Key(key): Key) -> impl IntoResponse {
+    // Map each one to their url format
+    // /blog/{year}/{month}/{day}/{title}
+    let posts: Vec<Value> = state
+        .articles
+        .iter()
+        .map(|a| {
+            let url = format!(
+                "/blog/{}/{}/{}/{}",
+                a.year(),
+                a.month(),
+                a.day(),
+                a.serialize_title()
             );
+            json!({
+                "title": a.title().to_string(),
+                "url": url
+            })
+        })
+        .collect();
 
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.is_file() && path.extension().map_or(false, |ext| ext == "html") {
-                        if let Some(file_name) = path.file_stem().and_then(|s| s.to_str()) {
-                            // Parse the filename to extract date and post name
-                            let parts: Vec<&str> = file_name.splitn(4, '-').collect();
-                            if parts.len() >= 4 {
-                                let year = parts[0];
-                                let month = parts[1];
-                                let day = parts[2];
-                                let post_name = parts[3];
-
-                                let url = format!("/blog/{}/{}/{}/{}", year, month, day, post_name);
-                                html_content.push_str(&format!(
-                                    "<li><a href=\"{}\">{}</a></li>",
-                                    url, file_name
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-
-            html_content.push_str("</ul></body></html>");
-
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-                .body(html_content)
-                .unwrap()
-        }
-        Err(_) => Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body("Error reading blog directory".to_string())
-            .unwrap(),
-    }
+    tracing::debug!("Posts: {posts:?}");
+    RenderHtml(
+        key,
+        state.engine,
+        json!({
+            "posts": posts,
+            "parent": "base"
+        }),
+    )
 }
 
 /// Serve blog posts from build/blog/ directory
 async fn serve_blog_post(
+    State(state): State<AppState>,
     Path((year, month, day, path)): Path<(u32, u32, u32, String)>,
 ) -> impl IntoResponse {
     // Remove leading slash if present
     let path = path.strip_prefix('/').unwrap_or(&path);
 
     // Construct the file path with date-prefix structure
-    let file_name = format!("{:04}-{:02}-{:02}-{}.html", year, month, day, path);
-    let file_path = PathBuf::from(DEFAULT_BUILD_DIR)
-        .join(DEFAULT_POSTS_DIR)
-        .join(file_name);
+    let file_name = format!("{:04}-{:02}-{:02}-{}", year, month, day, path);
 
-    // Try to read the file
-    match std::fs::read_to_string(&file_path) {
-        Ok(content) => {
-            // Return the HTML content with proper content type
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-                .body(content)
-                .unwrap()
-        }
-        Err(_) => {
-            // Return 404 if file doesn't exist
-            Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body("Post not found".to_string())
-                .unwrap()
-        }
-    }
+    // Find the article with the given file name
+    let Some(article) = state.articles.iter().find(|a| a.filename() == file_name) else {
+        return RenderHtml(
+            "error",
+            state.engine,
+            json!({ "title": "Oops, there was an error", "parent": "base" }),
+        );
+    };
+
+    // Render the article
+    RenderHtml(
+        "post",
+        state.engine,
+        json!({
+            "content": article.render_html().unwrap(),
+            "title": article.title(),
+            "parent": "base"
+        }),
+    )
 }

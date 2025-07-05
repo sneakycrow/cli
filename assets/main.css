@@ -1,0 +1,30 @@
+:root {
+    font-family: "Outfit", sans-serif;
+    font-size: 16px;
+}
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+body {
+    background-color: #1a1a1a;
+    color: #e6e6e6;
+}
+
+a {
+    color: #00f279;
+}
+
+.blog-post {
+    width: 100%;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.blog-post {
+    h2 {
+        font-size: 1.2rem;
+    }
+}

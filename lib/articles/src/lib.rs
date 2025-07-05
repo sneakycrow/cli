@@ -1,7 +1,7 @@
 pub mod builder;
 pub mod errors;
 pub use builder::ArticleBuilder;
-use chrono::{DateTime, NaiveDate, TimeZone};
+use chrono::{DateTime, Datelike, NaiveDate, TimeZone};
 use chrono_tz::{Tz, US::Pacific};
 use errors::ArticleError;
 use markdown_ppp::{
@@ -21,7 +21,7 @@ struct Frontmatter<'a> {
     date: &'a str,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Article {
     title: String,
     author: String,
@@ -205,5 +205,25 @@ impl Article {
             self.date.date_naive().to_string(),
             self.serialize_title()
         )
+    }
+
+    /// Utility function for getting year
+    pub fn year(&self) -> i32 {
+        self.date.year()
+    }
+
+    /// Utility function for getting month
+    pub fn month(&self) -> u32 {
+        self.date.month()
+    }
+
+    /// Utility function for getting day
+    pub fn day(&self) -> u32 {
+        self.date.day()
+    }
+
+    /// Utility function for getting the title
+    pub fn title(&self) -> &str {
+        &self.title
     }
 }
