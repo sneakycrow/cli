@@ -1,3 +1,7 @@
+{{#*inline "head"}}
+    <title>blog</title>
+{{/inline}}
+
 {{#*inline "page"}}
   {{#each posts as |p|}}
       <li><a href="{{ p.url }}">{{ p.title }}</a></li>
