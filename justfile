@@ -17,3 +17,6 @@ run *FLAGS:
 
 install:
     cargo install --path packages/cli
+
+serve-web:
+    cargo run -p sc -- web serve

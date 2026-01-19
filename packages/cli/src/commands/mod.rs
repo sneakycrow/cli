@@ -1,20 +1,23 @@
+pub(crate) mod about;
 pub(crate) mod article;
-pub(crate) mod serve;
+pub(crate) mod web;
 
 use clap::Command;
+use context::{DEFAULT_CONFIG_FILE, SneakyContext};
 
 pub(crate) struct Cli {
     subcommands: Vec<Command>,
+    context: SneakyContext,
 }
 
 impl Cli {
     /// Parses and runs the CLI with default parameters
-    pub(crate) async fn parse() {
-        let cli = Self::default();
-        let matches = cli.build().get_matches();
+    pub(crate) async fn parse(&self) {
+        let matches = self.build().get_matches();
         match matches.subcommand() {
             Some(("article", sub_matches)) => article::run(sub_matches),
-            Some(("serve", _)) => serve::run().await,
+            Some(("web", sub_matches)) => web::run(sub_matches).await,
+            Some(("about", sub_matches)) => about::run(sub_matches, &self.context).await,
             _ => unreachable!(),
         }
     }
@@ -40,7 +43,8 @@ impl Cli {
 impl Default for Cli {
     fn default() -> Self {
         Self {
-            subcommands: vec![article::cli(), serve::cli()],
+            subcommands: vec![article::cli(), web::cli(), about::cli()],
+            context: SneakyContext::from_file(DEFAULT_CONFIG_FILE).unwrap_or_default(),
         }
     }
 }
