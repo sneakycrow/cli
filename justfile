@@ -20,3 +20,9 @@ install:
 
 serve-web:
     cargo run -p sc -- web serve
+
+build-web:
+    cargo run -p sc -- web build
+
+clean-build:
+    rm -rf build/
