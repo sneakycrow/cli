@@ -4,19 +4,6 @@ date: 2024-06-13
 slug: playing-with-gleam
 summary: ' A high level exploration of the gleam language, a new programming language'
 category: tech
-edits:
-- id: 4d68017c514e629f97bac8e53811b6c31e9086b6
-  message: add reading section
-  author: sneakycrow
-  timestamp: '1718581137'
-- id: 6b9487f981abd0d5ab7ae5acf1538f815f78efa3
-  message: add categories to posts
-  author: Zachary Corvidae
-  timestamp: '1720820568'
-- id: 2e8c6cb16472096a2ff3ce3419c72e3fc3b562b3
-  message: Sneakycrow/better-syntax-highlighting (#265)
-  author: Zachary Corvidae
-  timestamp: '1719365907'
 ---
 
 ## what is gleam?
