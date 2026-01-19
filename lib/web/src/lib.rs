@@ -12,7 +12,7 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use std::path::PathBuf;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 
 const SOURCE_ARTICLES_DIR: &str = "_posts/";
 const BUILD_DIR: &str = "build";
@@ -35,7 +35,7 @@ impl From<Article> for Post {
             .expect("Could not render article html");
 
         Post {
-            url: format!("/blog/{}.html", article.filename()),
+            url: format!("/blog/{}", article.filename()),
             filename: article.filename(),
             title: article.title,
             author: article.author,
@@ -46,7 +46,7 @@ impl From<Article> for Post {
 }
 
 #[derive(Clone, FromRef)]
-struct AppState {
+pub struct AppState {
     articles: Vec<Article>,
     context: SneakyContext,
 }
@@ -64,17 +64,11 @@ impl Default for AppState {
 pub async fn serve() -> Result<(), WebError> {
     let state = AppState::default();
 
-    // copy static assets
-    copy_static_assets(&state)?;
-
-    // prerender static content
-    prerender(&state)?;
+    // build the static parts of the site
+    build(&state)?;
 
     // build the router
-    let router = Router::new()
-        .nest_service("/assets", ServeDir::new(format!("{BUILD_DIR}/assets")))
-        .nest_service("/blog", ServeDir::new(format!("{BUILD_DIR}/blog")))
-        .route_service("/", ServeFile::new(format!("{BUILD_DIR}/index.html")));
+    let router = Router::new().fallback_service(ServeDir::new(format!("{BUILD_DIR}")));
 
     // run the router
     let port = 3000;
@@ -146,6 +140,12 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
     // render the posts
     tracing::debug!("rendering blog posts");
     for post in posts {
+        // create the post directory
+        let post_dir = PathBuf::from(format!("{BUILD_DIR}/blog/{}", post.filename));
+        std::fs::create_dir_all(&post_dir)?;
+
+        // render the html
+        tracing::debug!("rendering article: {}", post.filename);
         let html = hbs.render(
             "post",
             &json!({
@@ -154,8 +154,9 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
                 "content": &post.content
             }),
         )?;
-        tracing::debug!("rendering article: {}", post.filename);
-        let build_path = PathBuf::from(format!("{BUILD_DIR}/blog/{}.html", post.filename));
+
+        // save the html
+        let build_path = PathBuf::from(format!("{BUILD_DIR}/blog/{}/index.html", post.filename));
         std::fs::write(&build_path, html)?;
     }
 
@@ -186,6 +187,17 @@ fn copy_static_assets(_state: &AppState) -> Result<(), WebError> {
             std::fs::copy(&path, &dest_path)?;
         }
     }
+
+    Ok(())
+}
+
+/// Builds the static parts of the website
+pub fn build(state: &AppState) -> Result<(), WebError> {
+    // copy static assets
+    copy_static_assets(&state)?;
+
+    // prerender static content
+    prerender(&state)?;
 
     Ok(())
 }
