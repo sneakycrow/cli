@@ -1,6 +1,5 @@
 target/
 build/
-_posts/
 
 .env*
 !.env.example

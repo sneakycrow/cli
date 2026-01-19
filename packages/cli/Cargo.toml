@@ -10,3 +10,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = "0.1.41"
 web = { path = "../../lib/web" }
 tokio = { version = "1.46.0", features = ["full"] }
+context = { path = "../../lib/context" }

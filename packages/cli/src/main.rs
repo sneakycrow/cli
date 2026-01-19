@@ -13,5 +13,5 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    Cli::parse().await;
+    Cli::default().parse().await;
 }

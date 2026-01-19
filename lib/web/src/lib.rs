@@ -2,56 +2,79 @@
 // TODO: Serve articles from /blog
 pub mod errors;
 
-use articles::{Article, Serialize};
-use axum::{
-    Router,
-    extract::{FromRef, Path, State},
-    response::IntoResponse,
-    routing::get,
-};
-use axum_template::{Key, RenderHtml, engine::Engine};
+use articles::Article;
+use axum::{Router, extract::FromRef};
+use chrono::DateTime;
+use chrono_tz::Tz;
+use context::{DEFAULT_CONFIG_FILE, SneakyContext};
 use errors::WebError;
 use handlebars::Handlebars;
-use serde_json::{Value, json};
+use serde::Serialize;
+use serde_json::json;
 use std::path::PathBuf;
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
-// TODO: Replace with config loading
-const ARTICLES_DIRECTORY: &str = "_posts/";
+const SOURCE_ARTICLES_DIR: &str = "_posts/";
+const BUILD_DIR: &str = "build";
 
-type AppEngine = Engine<Handlebars<'static>>;
+#[derive(Serialize)]
+struct Post {
+    pub title: String,
+    pub author: String,
+    pub date: DateTime<Tz>,
+    pub content: String,
+    pub url: String,
+    pub filename: String,
+}
+
+impl From<Article> for Post {
+    fn from(article: Article) -> Self {
+        let content = article
+            .clone()
+            .render_html()
+            .expect("Could not render article html");
+
+        Post {
+            url: format!("/blog/{}.html", article.filename()),
+            filename: article.filename(),
+            title: article.title,
+            author: article.author,
+            date: article.date,
+            content: content,
+        }
+    }
+}
 
 #[derive(Clone, FromRef)]
 struct AppState {
-    engine: AppEngine,
     articles: Vec<Article>,
+    context: SneakyContext,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            articles: Article::from_dir(PathBuf::from(SOURCE_ARTICLES_DIR)).unwrap_or_default(),
+            context: SneakyContext::from_file(DEFAULT_CONFIG_FILE).unwrap_or_default(),
+        }
+    }
 }
 
 /// Serve the website
 pub async fn serve() -> Result<(), WebError> {
-    // load the articles
-    let articles = Article::from_dir(PathBuf::from(ARTICLES_DIRECTORY)).unwrap();
+    let state = AppState::default();
 
-    // initialize template engine
-    let mut hbs = Handlebars::new();
-    let _ = hbs.register_template_file("base", "./templates/partials/base.hbs");
-    let _ = hbs.register_template_file("/", "./templates/index.hbs");
-    let _ = hbs.register_template_file("/blog", "./templates/blog.hbs");
-    let _ = hbs.register_template_file("post", "./templates/post.hbs");
+    // copy static assets
+    copy_static_assets(&state)?;
 
-    // construct app state
-    let app_state = AppState {
-        engine: Engine::from(hbs),
-        articles,
-    };
+    // prerender static content
+    prerender(&state)?;
 
     // build the router
     let router = Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
-        .route("/", get(root))
-        .route("/blog", get(serve_blog_index))
-        .route("/blog/{year}/{month}/{day}/{*path}", get(serve_blog_post))
-        .with_state(app_state);
+        .nest_service("/assets", ServeDir::new(format!("{BUILD_DIR}/assets")))
+        .nest_service("/blog", ServeDir::new(format!("{BUILD_DIR}/blog")))
+        .route_service("/", ServeFile::new(format!("{BUILD_DIR}/index.html")));
 
     // run the router
     let port = 3000;
@@ -68,85 +91,101 @@ pub async fn serve() -> Result<(), WebError> {
     Ok(())
 }
 
-#[derive(Serialize)]
-struct RootTemplate {
-    parent: String,
+/// Pre-render statically served content
+fn prerender(state: &AppState) -> Result<(), WebError> {
+    // load the articles
+    tracing::debug!("loading articles");
+    let posts: Vec<Post> = state.articles.iter().map(|a| a.to_owned().into()).collect();
+
+    // initialize template engine
+    tracing::debug!("initializing template engine");
+    let mut hbs = Handlebars::new();
+    let _ = hbs.register_template_file("base", "./templates/base.hbs");
+    let _ = hbs.register_template_file("index", "./templates/index.hbs");
+    let _ = hbs.register_template_file("blog_index", "./templates/blog.hbs");
+    let _ = hbs.register_template_file("post", "./templates/post.hbs");
+
+    // create the build dir
+    tracing::debug!("making sure the build directories exist");
+    let build_dir = PathBuf::from(BUILD_DIR);
+    if !build_dir.exists() {
+        std::fs::create_dir(&build_dir).expect("Could not create build directory");
+    }
+
+    // render the index page
+    tracing::debug!("rendering index page");
+    let index_html = hbs.render(
+        "index",
+        &json!({
+            "parent": "base"
+        }),
+    )?;
+    std::fs::write(PathBuf::from(format!("{BUILD_DIR}/index.html")), index_html)?;
+
+    // create the blog dir
+    tracing::debug!("making sure the blog directory exists");
+    let blog_dir = PathBuf::from(format!("{BUILD_DIR}/blog"));
+    if !blog_dir.exists() {
+        std::fs::create_dir(&blog_dir).expect("Could not create blog directory");
+    }
+
+    // render the blog index
+    tracing::debug!("rendering blog index page");
+    let blog_index_html = hbs.render(
+        "blog_index",
+        &json!({
+            "parent": "base",
+            "posts": &posts
+        }),
+    )?;
+    std::fs::write(
+        PathBuf::from(format!("{BUILD_DIR}/blog/index.html")),
+        blog_index_html,
+    )?;
+
+    // render the posts
+    tracing::debug!("rendering blog posts");
+    for post in posts {
+        let html = hbs.render(
+            "post",
+            &json!({
+                "parent": "base",
+                "title": &post.title,
+                "content": &post.content
+            }),
+        )?;
+        tracing::debug!("rendering article: {}", post.filename);
+        let build_path = PathBuf::from(format!("{BUILD_DIR}/blog/{}.html", post.filename));
+        std::fs::write(&build_path, html)?;
+    }
+
+    Ok(())
 }
 
-impl Default for RootTemplate {
-    fn default() -> Self {
-        Self {
-            parent: "base".to_string(),
+/// Copies the assets directory to the build directory
+fn copy_static_assets(_state: &AppState) -> Result<(), WebError> {
+    let assets_dir = PathBuf::from("assets");
+    let build_assets_dir = PathBuf::from(format!("{BUILD_DIR}/assets"));
+
+    if !assets_dir.exists() {
+        // No assets to copy, bail out
+        tracing::debug!("No assets directory found, skipping");
+        return Ok(());
+    }
+
+    std::fs::create_dir_all(&build_assets_dir)?;
+
+    for entry in std::fs::read_dir(&assets_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dest_path = build_assets_dir.join(path.file_name().unwrap());
+
+        if path.is_dir() {
+            std::fs::create_dir_all(&dest_path)?;
+        } else {
+            std::fs::copy(&path, &dest_path)?;
         }
     }
-}
 
-/// Root index page
-async fn root(State(state): State<AppState>, Key(key): Key) -> impl IntoResponse {
-    RenderHtml(key, state.engine, RootTemplate::default())
-}
-
-/// List all articles in the blog
-async fn serve_blog_index(State(state): State<AppState>, Key(key): Key) -> impl IntoResponse {
-    // Map each one to their url format
-    // /blog/{year}/{month}/{day}/{title}
-    let posts: Vec<Value> = state
-        .articles
-        .iter()
-        .map(|a| {
-            let url = format!(
-                "/blog/{}/{}/{}/{}",
-                a.year(),
-                a.month(),
-                a.day(),
-                a.serialize_title()
-            );
-            json!({
-                "title": a.title().to_string(),
-                "url": url
-            })
-        })
-        .collect();
-
-    tracing::debug!("Posts: {posts:?}");
-    RenderHtml(
-        key,
-        state.engine,
-        json!({
-            "posts": posts,
-            "parent": "base"
-        }),
-    )
-}
-
-/// Serve blog posts from build/blog/ directory
-async fn serve_blog_post(
-    State(state): State<AppState>,
-    Path((year, month, day, path)): Path<(u32, u32, u32, String)>,
-) -> impl IntoResponse {
-    // Remove leading slash if present
-    let path = path.strip_prefix('/').unwrap_or(&path);
-
-    // Construct the file path with date-prefix structure
-    let file_name = format!("{:04}-{:02}-{:02}-{}", year, month, day, path);
-
-    // Find the article with the given file name
-    let Some(article) = state.articles.iter().find(|a| a.filename() == file_name) else {
-        return RenderHtml(
-            "error",
-            state.engine,
-            json!({ "title": "Oops, there was an error", "parent": "base" }),
-        );
-    };
-
-    // Render the article
-    RenderHtml(
-        "post",
-        state.engine,
-        json!({
-            "content": article.render_html().unwrap(),
-            "title": article.title(),
-            "parent": "base"
-        }),
-    )
+    Ok(())
 }

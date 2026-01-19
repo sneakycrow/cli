@@ -23,10 +23,10 @@ struct Frontmatter<'a> {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Article {
-    title: String,
-    author: String,
-    date: DateTime<Tz>,
-    content: String,
+    pub title: String,
+    pub author: String,
+    pub date: DateTime<Tz>,
+    pub content: String,
 }
 
 impl TryFrom<Article> for String {
@@ -200,11 +200,7 @@ impl Article {
 
     /// Utility for serializing the file name {date}-{title}
     pub fn filename(&self) -> String {
-        format!(
-            "{}-{}",
-            self.date.date_naive().to_string(),
-            self.serialize_title()
-        )
+        format!("{}", self.serialize_title())
     }
 
     /// Utility function for getting year
