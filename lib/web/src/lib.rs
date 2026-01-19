@@ -12,7 +12,7 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use std::path::PathBuf;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 
 const SOURCE_ARTICLES_DIR: &str = "_posts/";
 const BUILD_DIR: &str = "build";
@@ -35,7 +35,7 @@ impl From<Article> for Post {
             .expect("Could not render article html");
 
         Post {
-            url: format!("/blog/{}.html", article.filename()),
+            url: format!("/blog/{}", article.filename()),
             filename: article.filename(),
             title: article.title,
             author: article.author,
@@ -68,10 +68,7 @@ pub async fn serve() -> Result<(), WebError> {
     build(&state)?;
 
     // build the router
-    let router = Router::new()
-        .nest_service("/assets", ServeDir::new(format!("{BUILD_DIR}/assets")))
-        .nest_service("/blog", ServeDir::new(format!("{BUILD_DIR}/blog")))
-        .route_service("/", ServeFile::new(format!("{BUILD_DIR}/index.html")));
+    let router = Router::new().fallback_service(ServeDir::new(format!("{BUILD_DIR}")));
 
     // run the router
     let port = 3000;
