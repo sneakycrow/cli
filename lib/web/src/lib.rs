@@ -101,12 +101,25 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
         std::fs::create_dir(&build_dir).expect("Could not create build directory");
     }
 
+    let build_time = chrono::Utc::now()
+        .with_timezone(&chrono_tz::US::Pacific)
+        .format("%Y-%m-%d %H:%M:%S %Z")
+        .to_string();
+
+    let build_hash = state.context.build_info.hash.clone();
+    let author_name = state.context.me.name.clone();
+    let author_email = state.context.me.email.clone();
+
     // render the index page
     tracing::debug!("rendering index page");
     let index_html = hbs.render(
         "index",
         &json!({
-            "parent": "base"
+            "parent": "base",
+            "build_time": &build_time,
+            "build_hash": &build_hash,
+            "author_email": &author_email,
+            "author_name": &author_name
         }),
     )?;
     std::fs::write(PathBuf::from(format!("{BUILD_DIR}/index.html")), index_html)?;
@@ -124,7 +137,11 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
         "blog_index",
         &json!({
             "parent": "base",
-            "posts": &posts
+            "posts": &posts,
+            "build_time": &build_time,
+            "build_hash": &build_hash,
+            "author_email": &author_email,
+            "author_name": &author_name
         }),
     )?;
     std::fs::write(
@@ -146,7 +163,11 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
             &json!({
                 "parent": "base",
                 "title": &post.title,
-                "content": &post.content
+                "content": &post.content,
+                "build_time": &build_time,
+                "build_hash": &build_hash,
+                "author_email": &author_email,
+                "author_name": &author_name
             }),
         )?;
 
