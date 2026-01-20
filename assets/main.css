@@ -2,7 +2,7 @@
 @import "fonts.css";
 
 :root {
-    font-family: "Bricolage Grotesque", "Outfit", sans-serif;
+    font-family: "Bricolage Grotesque", sans-serif;
     font-size: 16px;
     --spacing: 1rem;
     --max-content-width: 1000px;
