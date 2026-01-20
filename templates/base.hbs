@@ -1,15 +1,23 @@
 <html>
   <head>
+    <meta charset="utf-8" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
         rel="stylesheet"
     />
-  {{> head}}
     <link rel="stylesheet" href="/assets/main.css" />
+  {{> head}}
   </head>
   <body>
+      <header id="primary-nav">
+          <a href="/">{some logo}</a>
+          <nav>
+              <a href="/">home</a>
+              <a href="/blog">blog</a>
+          </nav>
+      </header>
     {{> page}}
   </body>
 </html>

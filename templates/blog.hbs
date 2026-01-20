@@ -1,10 +1,19 @@
 {{#*inline "head"}}
     <title>blog</title>
+    <link rel="stylesheet" href="/assets/blog.css" />
 {{/inline}}
 
 {{#*inline "page"}}
-  {{#each posts as |p|}}
-      <li><a href="{{ p.url }}">{{ p.title }}</a></li>
-  {{/each}}
+    <main class="post-list">
+        <h1>brain juice</h1>
+        <ul>
+        {{#each posts as |p|}}
+            <li>
+                <a href="{{ p.url }}">{{ p.title }}</a>
+                <span>{{ p.date }}</span>
+            </li>
+        {{/each}}
+        </ul>
+    </main>
 {{/inline}}
 {{> (lookup this "parent")}}

@@ -1,16 +1,20 @@
 {{#*inline "head"}}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script src="https://unpkg.com/highlightjs-svelte/dist/svelte.min.js"></script>
+    <script src="/assets/js/highlight-gleam.min.js"></script>
+    <link rel="stylesheet" href="/assets/code.css" />
+    <link rel="stylesheet" href="/assets/blog.css" />
 
-    <!-- and it's easy to individually load additional languages -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/go.min.js"></script>
-
-    <script>hljs.highlightAll();</script>
+    <title>{{ title}}</title>
+    <script>
+        hljs.initHighlightingOnLoad();
+    </script>
 {{/inline}}
 
 {{#*inline "page"}}
     <article class="blog-post">
         <h2>{{ title }}</h2>
+        <a href="/blog" class="back-link">back</a>
         {{{ content }}}
     </article>
 {{/inline}}
