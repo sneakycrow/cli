@@ -72,27 +72,27 @@ main.post-list {
     }
 
     h1 {
-        font-size: 2.5rem;
-        font-weight: bold;
+        font-size: 3.5rem;
+        font-weight: 900;
     }
 
     h2 {
-        font-size: 2rem;
-        font-weight: bold;
+        font-size: 2.5rem;
+        font-weight: 900;
     }
 
     h3 {
+        font-size: 2rem;
+        font-weight: 900;
+    }
+
+    h4 {
         font-size: 1.5rem;
         font-weight: bold;
     }
 
-    h4 {
-        font-size: 1.25rem;
-        font-weight: bold;
-    }
-
     h5 {
-        font-size: 1.125rem;
+        font-size: 1.25rem;
         font-weight: bold;
     }
 
