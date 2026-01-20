@@ -11,8 +11,12 @@ section.post-list {
         width: 100%;
     }
 
+    h1 {
+        padding: var(--spacing);
+    }
+
     ul {
-        list-style-type: circle;
+        list-style-type: none;
         width: 100%;
         display: flex;
         justify-content: center;
@@ -20,19 +24,32 @@ section.post-list {
         flex-direction: column;
         li {
             width: 100%;
-            display: flex;
-            justify-content: space-between;
+            border-radius: 4px;
+            padding: var(--spacing);
+            transition: background-color 0.3s ease;
+            &:hover {
+                background-color: var(--color-tertiary);
+            }
             a {
-                width: auto;
+                display: inline-flex;
+                width: 100%;
+                justify-content: space-between;
+                align-items: center;
+                &:hover {
+                    text-decoration: none;
+                }
+            }
+            span.title {
                 font-weight: bold;
                 font-size: 1.5rem;
             }
-            span {
+            span.date {
                 width: auto;
                 margin-right: 0;
                 margin-left: auto;
                 font-weight: light;
                 font-style: italic;
+                color: var(--color-white);
             }
         }
         li::marker {
@@ -62,17 +79,22 @@ section.post-list {
     h5,
     h6 {
         margin-block-start: calc(var(--spacing) / 2);
-        margin-block-end: calc(calc(var(--spacing) * 2));
+        margin-block-end: calc(var(--spacing) / 2);
     }
 
     p {
         --spacing: 0.5rem;
         margin-block-start: calc(var(--spacing) / 2);
-        margin-block-end: calc(calc(var(--spacing) * 2));
+        margin-block-end: calc(var(--spacing) / 2);
+    }
+
+    .back-link {
+        align-self: flex-end;
+        margin-bottom: calc(var(--spacing) / 2);
     }
 
     h1 {
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 900;
     }
 

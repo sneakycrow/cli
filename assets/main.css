@@ -2,20 +2,15 @@
 @import "fonts.css";
 
 :root {
-    font-family: "Bricolage Grotesque", "Outfit", sans-serif;
+    font-family: "Bricolage Grotesque", sans-serif;
     font-size: 16px;
     --spacing: 1rem;
     --max-content-width: 1000px;
 
-    --light-green: #00f279;
-    --dark-green: #00695e;
-    --off-black: #1a1a1a;
-    --off-white: #e6e6e6;
-
-    --color-primary: var(--light-green);
-    --color-tertiary: var(--dark-green);
-    --color-white: var(--off-white);
-    --color-black: var(--off-black);
+    --color-primary: #0ba750;
+    --color-tertiary: #055227;
+    --color-white: #fefcd9;
+    --color-black: #1f1f1f;
 }
 
 * {
@@ -38,6 +33,38 @@ a {
     }
 }
 
+ul,
+ol {
+    list-style-position: inside;
+    margin: 0;
+}
+
+.logo-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-white);
+    flex-wrap: nowrap;
+    min-width: 300px;
+    transition: color 0.2s ease-in-out;
+
+    img {
+        width: 100px;
+        height: auto;
+    }
+
+    h2 {
+        margin-left: 0.5rem;
+        font-size: 3rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    &:hover {
+        text-decoration: none;
+        color: var(--color-primary);
+    }
+}
+
 .back-link::after {
     content: " \21A9";
 }
@@ -52,6 +79,7 @@ header.main-header {
     display: flex;
     width: 100%;
     justify-content: space-between;
+    align-items: center;
     padding: var(--spacing);
 
     > * {
@@ -64,14 +92,16 @@ header.main-header {
         flex-direction: row;
         flex-wrap: nowrap;
         justify-content: flex-end;
+        align-items: center;
         a {
             font-size: 1.5rem;
             font-weight: 800;
             text-transform: uppercase;
-            transition: opacity 0.2s ease-in-out;
+            transition: color 0.2s ease-in-out;
+            color: var(--color-white);
             &:hover {
                 text-decoration: none;
-                opacity: 0.75;
+                color: var(--color-primary);
             }
         }
         a:not(:last-child) {

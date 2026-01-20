@@ -9,8 +9,7 @@
         <ul>
             {{#each posts as |p|}}
                 <li>
-                    <a href="{{ p.url }}">{{ p.title }}</a>
-                    <span>{{ p.date }}</span>
+                    <a href="{{ p.url }}"><span class="title">{{ p.title }}</span> <span class="date">{{ p.date }}</span></a>
                 </li>
             {{/each}}
         </ul>
