@@ -4,6 +4,8 @@ use clap::Command;
 pub(crate) fn cli() -> Command {
     Command::new("web")
         .about("fn for personal website")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
         .subcommand(Command::new("serve").about("Serves the website locally"))
         .subcommand(Command::new("build").about("Builds the website"))
 }

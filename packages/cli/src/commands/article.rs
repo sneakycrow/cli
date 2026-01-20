@@ -8,6 +8,8 @@ const DEFAULT_ARTICLE_OUTPUT_DIR: &str = "_posts/";
 pub(crate) fn cli() -> Command {
     Command::new("article")
         .about("Interact with articles")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
         .subcommand(
             Command::new("create")
                 .about("Creates a new article file with the given data")
