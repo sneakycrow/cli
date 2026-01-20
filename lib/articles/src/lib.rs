@@ -4,12 +4,7 @@ pub use builder::ArticleBuilder;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone};
 use chrono_tz::{Tz, US::Pacific};
 use errors::ArticleError;
-use markdown_ppp::{
-    ast::Document,
-    html_printer::{self, render_html},
-    parser::{MarkdownParserState, parse_markdown},
-};
-pub use serde::Serialize;
+use serde::Serialize;
 use std::{fs, path::PathBuf};
 
 const DEFAULT_AUTHOR: &str = "sneakycrow";
@@ -90,11 +85,61 @@ impl Article {
     }
 
     /// Render the content of the article to HTML
-    pub fn render_html(&self) -> Result<String, ArticleError> {
-        self.render_ast().map(|doc| {
-            let val = render_html(&doc, html_printer::config::Config::default());
-            val
-        })
+    pub fn render_html(&self) -> String {
+        let preprocessed_content = Self::preprocess_code_blocks(&self.content);
+
+        markdown::to_html(&preprocessed_content)
+    }
+
+    /// Preprocesses the code blocks to extract additional metadata and
+    /// render the block itself correctly
+    fn preprocess_code_blocks(content: &str) -> String {
+        let mut result = String::new();
+        let mut in_code_block = false;
+        let mut pending_newline = false;
+
+        for line in content.lines() {
+            // Check if this line starts a code block
+            if line.trim_start().starts_with("```") {
+                let trimmed = line.trim_start();
+                let backticks_end = trimmed.chars().take_while(|&c| c == '`').count();
+                let after_backticks = &trimmed[backticks_end..];
+
+                if !in_code_block {
+                    // Opening code block
+                    in_code_block = true;
+                    result.push_str(line);
+                    result.push('\n');
+
+                    // If there's an info string (like "js vite.config.js"), add an extra newline
+                    // This fixes the indentation issue with the first line of code
+                    if !after_backticks.trim().is_empty() {
+                        pending_newline = true;
+                    }
+                } else {
+                    // Closing code block
+                    in_code_block = false;
+                    result.push_str(line);
+                    result.push('\n');
+                }
+            } else {
+                // Regular line
+                if pending_newline {
+                    // Add the extra newline after the opening ``` with info string
+                    result.push('\n');
+                    pending_newline = false;
+                }
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
+
+        // Remove the last newline if we added one
+        if result.ends_with('\n') {
+            result.pop();
+        }
+
+        result
     }
 
     /// Loads a list of articles from a directory
@@ -114,16 +159,6 @@ impl Article {
         }
 
         Ok(articles)
-    }
-
-    /// Renders the content of the article into an AST
-    pub fn render_ast(&self) -> Result<Document, ArticleError> {
-        let state = MarkdownParserState::default();
-
-        parse_markdown(state, &self.content).map_err(|e| {
-            tracing::error!("Failed to parse markdown: {e}");
-            ArticleError::ContentParse
-        })
     }
 
     /// Saves the article to a file

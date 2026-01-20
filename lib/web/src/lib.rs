@@ -4,8 +4,6 @@ pub mod errors;
 
 use articles::Article;
 use axum::{Router, extract::FromRef};
-use chrono::DateTime;
-use chrono_tz::Tz;
 use context::{DEFAULT_CONFIG_FILE, SneakyContext};
 use errors::WebError;
 use handlebars::Handlebars;
@@ -21,7 +19,7 @@ const BUILD_DIR: &str = "build";
 struct Post {
     pub title: String,
     pub author: String,
-    pub date: DateTime<Tz>,
+    pub date: String,
     pub content: String,
     pub url: String,
     pub filename: String,
@@ -29,17 +27,14 @@ struct Post {
 
 impl From<Article> for Post {
     fn from(article: Article) -> Self {
-        let content = article
-            .clone()
-            .render_html()
-            .expect("Could not render article html");
+        let content = article.clone().render_html();
 
         Post {
             url: format!("/blog/{}", article.filename()),
             filename: article.filename(),
             title: article.title,
             author: article.author,
-            date: article.date,
+            date: article.date.format("%B %d, %Y").to_string(),
             content: content,
         }
     }
@@ -164,6 +159,7 @@ fn prerender(state: &AppState) -> Result<(), WebError> {
 }
 
 /// Copies the assets directory to the build directory
+/// Copies the assets directory to the build directory
 fn copy_static_assets(_state: &AppState) -> Result<(), WebError> {
     let assets_dir = PathBuf::from("assets");
     let build_assets_dir = PathBuf::from(format!("{BUILD_DIR}/assets"));
@@ -176,17 +172,35 @@ fn copy_static_assets(_state: &AppState) -> Result<(), WebError> {
 
     std::fs::create_dir_all(&build_assets_dir)?;
 
-    for entry in std::fs::read_dir(&assets_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        let dest_path = build_assets_dir.join(path.file_name().unwrap());
+    // Recursive function to copy directory contents
+    fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), WebError> {
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            let path = entry.path();
+            let dest_path = dst.join(path.file_name().unwrap());
 
-        if path.is_dir() {
-            std::fs::create_dir_all(&dest_path)?;
-        } else {
-            std::fs::copy(&path, &dest_path)?;
+            if path.is_dir() {
+                std::fs::create_dir_all(&dest_path)?;
+                copy_dir_recursive(&path, &dest_path)?;
+            } else {
+                std::fs::copy(&path, &dest_path)?;
+            }
         }
+        Ok(())
     }
+
+    copy_dir_recursive(&assets_dir, &build_assets_dir)?;
+
+    Ok(())
+}
+
+/// Builds the static parts of the website
+pub fn build(state: &AppState) -> Result<(), WebError> {
+    // copy static assets
+    copy_static_assets(&state)?;
+
+    // prerender static content
+    prerender(&state)?;
 
     Ok(())
 }

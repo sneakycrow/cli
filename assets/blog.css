@@ -1,0 +1,103 @@
+@import "code.css";
+
+main.post-list {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin: calc(var(--spacing) * 2);
+    > * {
+        max-width: var(--max-content-width);
+        width: 100%;
+    }
+
+    ul {
+        list-style-type: circle;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        li {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            a {
+                width: auto;
+                font-weight: bold;
+                font-size: 1.5rem;
+            }
+            span {
+                width: auto;
+                margin-right: 0;
+                margin-left: auto;
+                font-weight: light;
+                font-style: italic;
+            }
+        }
+        li::marker {
+            font-size: 1.2em;
+        }
+
+        li:not(:last-child) {
+            margin-bottom: calc(var(--spacing) * 1.25);
+        }
+    }
+}
+
+.blog-post {
+    width: 100%;
+    max-width: var(--max-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.25rem;
+    line-height: 1.6;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin-block-start: calc(var(--spacing) / 2);
+        margin-block-end: calc(calc(var(--spacing) * 2));
+    }
+
+    p {
+        --spacing: 0.5rem;
+        margin-block-start: calc(var(--spacing) / 2);
+        margin-block-end: calc(calc(var(--spacing) * 2));
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+
+    h2 {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    h3 {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    h4 {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    h5 {
+        font-size: 1.125rem;
+        font-weight: bold;
+    }
+
+    h6 {
+        font-size: 1rem;
+        font-weight: bold;
+    }
+}

@@ -3,7 +3,9 @@
 {{/inline}}
 
 {{#*inline "page"}}
-  <p>Rendered in partial, parent is {{parent}}</p>
-  <a href="/blog">go to blog</a>
+  <main class="page">
+    <p>Rendered in partial, parent is {{parent}}</p>
+    <a href="/blog">go to blog</a>
+  </main>
 {{/inline}}
 {{> (lookup this "parent")}}
