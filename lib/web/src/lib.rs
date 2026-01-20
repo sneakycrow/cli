@@ -204,3 +204,14 @@ pub fn build(state: &AppState) -> Result<(), WebError> {
 
     Ok(())
 }
+
+/// Builds the static parts of the website
+pub fn build(state: &AppState) -> Result<(), WebError> {
+    // copy static assets
+    copy_static_assets(&state)?;
+
+    // prerender static content
+    prerender(&state)?;
+
+    Ok(())
+}
