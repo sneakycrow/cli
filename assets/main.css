@@ -42,7 +42,13 @@ a {
     content: " \21A9";
 }
 
-header#primary-nav {
+.metadata {
+    font-size: 0.75rem;
+    color: var(--color-white);
+    font-family: monospace;
+}
+
+header.main-header {
     display: flex;
     width: 100%;
     justify-content: space-between;
@@ -75,9 +81,28 @@ header#primary-nav {
 }
 
 main.page {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+}
+
+footer.main-footer {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing);
+    margin-top: calc(var(--spacing) * 1.5);
+}
+
+footer > section.build-info {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     justify-content: center;
-    align-items: center;
-    padding: calc(var(--spacing) * 2);
+    font-weight: 300;
+    font-size: 0.75rem;
+    color: var(--color-white);
+    font-family: monospace;
+    opacity: 0.5;
 }

@@ -11,13 +11,31 @@
   {{> head}}
   </head>
   <body>
-      <header id="primary-nav">
-          <a href="/">{some logo}</a>
-          <nav>
-              <a href="/">home</a>
-              <a href="/blog">blog</a>
-          </nav>
-      </header>
-    {{> page}}
+      <main class="page">
+        <header class="main-header">
+            <a href="/">{some logo}</a>
+            <nav>
+                <a href="/">home</a>
+                <a href="/blog">blog</a>
+            </nav>
+        </header>
+        {{> page}}
+        <footer class="main-footer">
+            <section class="build-info">
+                <p>
+                    <span>build hash:</span>
+                    <span>{{ build_hash }}</span>
+                </p>
+                <p>
+                    <span>build date:</span>
+                    <span>{{ build_time }}</span>
+                </p>
+                <p>
+                    <span>webmaster:</span>
+                    <a href="mailto:{{ author_email }}">{{ author_name }} &lt;{{ author_email }}&gt;</a>
+                </p>
+            </section>
+        </footer>
+      </main>
   </body>
 </html>

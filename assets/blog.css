@@ -1,6 +1,6 @@
 @import "code.css";
 
-main.post-list {
+section.post-list {
     display: flex;
     justify-content: center;
     flex-direction: column;
